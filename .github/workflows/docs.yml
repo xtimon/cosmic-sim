@@ -32,6 +32,9 @@ jobs:
         fi
         echo "[OK] README.md format check passed"
 
+    - name: Install package
+      run: pip install -e .
+
     - name: Verify code examples
       shell: bash
       env:
