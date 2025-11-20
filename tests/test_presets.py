@@ -3,7 +3,7 @@
 """
 import pytest
 import numpy as np
-from cosmic_sim import SystemPresets, Body
+from cosmic_sim import SystemPresets
 
 
 class TestSystemPresets:
