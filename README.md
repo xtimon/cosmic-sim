@@ -21,7 +21,7 @@
 
 ```bash
 # Клонируйте репозиторий
-git clone https://github.com/xtimon/cosmic-sim.git
+git clone [repo-url]
 cd cosmic-sim
 
 # Установите пакет
@@ -352,7 +352,7 @@ flake8 cosmic_sim/
 - ✅ **Publish** - автоматическая публикация в PyPI при release
 - ✅ **Dependabot** - автоматическое обновление зависимостей
 
-Статус workflows: [![CI](https://github.com/xtimon/cosmic-sim/workflows/CI/badge.svg)](https://github.com/xtimon/cosmic-sim/actions)
+Статус workflows: [![CI][ci-badge]][ci-actions]
 
 ## 📝 Лицензия
 
@@ -372,7 +372,7 @@ MIT License - см. файл [LICENSE](LICENSE)
 
 - **Автор**: Timur Isanov
 - **Email**: tisanov@yahoo.com
-- **GitHub**: [@xtimon](https://github.com/xtimon)
+- **GitHub**: [@xtimon][author-github]
 
 ## 🙏 Благодарности
 
@@ -383,3 +383,9 @@ MIT License - см. файл [LICENSE](LICENSE)
 ---
 
 ⭐ Если проект полезен, поставьте звезду!
+
+<!-- Link references -->
+[repo-url]: https://github.com/xtimon/cosmic-sim.git
+[ci-badge]: https://github.com/xtimon/cosmic-sim/workflows/CI/badge.svg
+[ci-actions]: https://github.com/xtimon/cosmic-sim/actions
+[author-github]: https://github.com/xtimon
