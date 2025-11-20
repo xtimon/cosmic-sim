@@ -1,0 +1,49 @@
+name: Documentation
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'README.md'
+      - 'README_FULL_SCALE.md'
+      - 'cosmic_sim/**/*.py'
+  workflow_dispatch:
+
+jobs:
+  docs-check:
+    name: Check Documentation
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+
+    - name: Check README formatting
+      shell: bash
+      env:
+        PYTHONIOENCODING: utf-8
+      run: |
+        if ! grep -q "# Cosmic Sim" README.md; then
+          echo "README.md missing main title"
+          exit 1
+        fi
+        echo "[OK] README.md format check passed"
+
+    - name: Verify code examples
+      shell: bash
+      env:
+        PYTHONIOENCODING: utf-8
+      run: |
+        python -c "
+        # Test that examples in README can be imported
+        from cosmic_sim import (
+            NBodySimulator, SystemPresets, AdvancedVisualizer,
+            CosmicSim, OrbitalSimulator, ParallaxVisualizer,
+            Body, SimulationIO
+        )
+        print('[OK] All imports from README work')
+        "
+
