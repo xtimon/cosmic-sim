@@ -156,22 +156,33 @@ class SystemPresets:
         mass_moon = 7.342e22
         r_moon = 3.844e8  # Среднее расстояние до Луны (м)
         
-        # Земля в центре (приближение)
+        # Используем центр масс системы для более реалистичной симуляции
+        total_mass = mass_earth + mass_moon
+        r_earth_cm = r_moon * mass_moon / total_mass  # Расстояние Земли от центра масс
+        r_moon_cm = r_moon * mass_earth / total_mass  # Расстояние Луны от центра масс
+        
+        # Орбитальная скорость для круговой орбиты вокруг центра масс
+        # Для круговой орбиты: v = sqrt(G * M_other / R_total)
+        # где M_other - масса другого тела, R_total - расстояние между телами
+        # Это упрощенная формула, которая работает для круговых орбит
+        v_earth = np.sqrt(self.cosmic.G * mass_moon / r_moon)
+        v_moon = np.sqrt(self.cosmic.G * mass_earth / r_moon)
+        
+        # Земля
         bodies.append(Body(
             name="Земля",
             mass=mass_earth,
-            position=np.array([0, 0, 0]),
-            velocity=np.array([0, 0, 0]),
+            position=np.array([-r_earth_cm, 0, 0]),
+            velocity=np.array([0, -v_earth, 0]),
             radius=self.cosmic.R_earth,
             color='blue'
         ))
         
         # Луна
-        v_moon = self.cosmic.orbital_velocity(mass_earth, r_moon)
         bodies.append(Body(
             name="Луна",
             mass=mass_moon,
-            position=np.array([r_moon, 0, 0]),
+            position=np.array([r_moon_cm, 0, 0]),
             velocity=np.array([0, v_moon, 0]),
             radius=1.737e6,  # Радиус Луны
             color='gray'

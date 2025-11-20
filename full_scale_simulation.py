@@ -197,18 +197,27 @@ def create_animation_example():
     
     simulator = NBodySimulator(bodies)
     
-    # Симулируем 1 месяц (период обращения Луны ~27 дней)
-    one_month = 27 * 24 * 3600
-    t_span = (0, one_month)
-    n_points = 500  # Меньше точек для анимации
+    # Симулируем 1 год для наблюдения полного орбитального движения
+    # За год Луна совершит примерно 13 полных оборотов вокруг Земли
+    one_year = 365.25 * 24 * 3600  # 1 год в секундах (с учетом високосных лет)
+    t_span = (0, one_year)
+    n_points = 1000  # Уменьшено для ускорения симуляции и анимации
     
     print("\nЗапуск симуляции системы Земля-Луна...")
+    print(f"Период: 1 год ({365.25:.1f} дней), количество точек: {n_points}")
     times, states = simulator.simulate(t_span, n_points=n_points, save_trajectory=True)
     
     visualizer = AdvancedVisualizer()
     
     print("Создание анимации...")
-    anim = visualizer.animate_simulation(bodies, interval=50)
+    # Оптимизированная анимация (100 мс между кадрами) с максимально близкой камерой
+    # Очень маленький масштаб для очень близкого обзора тел
+    # Фиксированная система координат (без вращения камеры)
+    # Используется blit=True и ограничение точек траектории для ускорения
+    # Увеличенный интервал для ускорения анимации за год
+    anim = visualizer.animate_simulation(bodies, interval=100, 
+                                        scale_factor=1.2, padding_factor=0.3,
+                                        rotate_camera=False, camera_rotation_speed=0.3)
     
     print("✓ Анимация создана! Закройте окно для продолжения.")
     plt.show()

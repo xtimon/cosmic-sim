@@ -113,17 +113,20 @@ class NBodySimulator:
         Parameters:
         -----------
         y : np.ndarray
-            Вектор состояния
+            Вектор состояния в формате [x0, y0, z0, x1, y1, z1, ..., vx0, vy0, vz0, vx1, vy1, vz1, ...]
+            где сначала идут все позиции, затем все скорости
         """
         n_bodies = len(self.bodies)
         n_dof = 3
         
+        # Вектор состояния: [pos0, pos1, ..., vel0, vel1, ...]
+        # где pos_i = [x_i, y_i, z_i], vel_i = [vx_i, vy_i, vz_i]
         positions = y[:n_bodies * n_dof].reshape(n_bodies, n_dof)
         velocities = y[n_bodies * n_dof:].reshape(n_bodies, n_dof)
         
         for i, body in enumerate(self.bodies):
-            body.position = positions[i]
-            body.velocity = velocities[i]
+            body.position = positions[i].copy()
+            body.velocity = velocities[i].copy()
     
     def simulate(self, t_span: Tuple[float, float], n_points: int = 1000, 
                  rtol: float = 1e-8, save_trajectory: bool = True,
@@ -152,8 +155,11 @@ class NBodySimulator:
         if len(self.bodies) == 0:
             raise ValueError("Нет тел в системе для симуляции")
         
-        # Собрать начальное состояние
-        initial_state = np.concatenate([b.get_state() for b in self.bodies])
+        # Собрать начальное состояние в формате [r1, r2, ..., rN, v1, v2, ..., vN]
+        # где r_i = [x_i, y_i, z_i], v_i = [vx_i, vy_i, vz_i]
+        positions = np.concatenate([b.position for b in self.bodies])
+        velocities = np.concatenate([b.velocity for b in self.bodies])
+        initial_state = np.concatenate([positions, velocities])
         
         # Очистить траектории
         if save_trajectory:
@@ -163,20 +169,23 @@ class NBodySimulator:
         # Временные точки для вычисления
         t_eval = np.linspace(t_span[0], t_span[1], n_points)
         
-        # Решить систему дифференциальных уравнений
+        # Решить систему дифференциальных уравнений с dense_output для интерполяции
         solution = solve_ivp(
             self._n_body_derivatives,
             t_span,
             initial_state,
             t_eval=t_eval,
             rtol=rtol,
-            method='RK45'
+            method='RK45',
+            dense_output=True
         )
         
         # Обновить состояния тел и сохранить траектории
+        # Используем t_eval для гарантии нужного количества точек
         states = []
-        for i, t in enumerate(solution.t):
-            state_vector = solution.y[:, i]
+        for i, t in enumerate(t_eval):
+            # Получить состояние через интерполяцию
+            state_vector = solution.sol(t)
             self._update_bodies_from_state(state_vector)
             self.time = t
             
@@ -195,7 +204,9 @@ class NBodySimulator:
                 callback(t, self.bodies)
         
         self.history = states
-        return solution.t, solution.y
+        # Вернуть интерполированные состояния для всех точек t_eval
+        all_states = np.array([solution.sol(t) for t in t_eval]).T
+        return t_eval, all_states
     
     def get_total_energy(self) -> float:
         """
