@@ -1,7 +1,6 @@
 """
 Тесты для модуля nbody
 """
-import pytest
 import numpy as np
 from cosmic_sim import NBodySimulator, Body, CosmicSim
 
