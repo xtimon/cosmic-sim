@@ -1,7 +1,6 @@
 """
 Тесты для модуля presets
 """
-import pytest
 from cosmic_sim import SystemPresets
 
 
