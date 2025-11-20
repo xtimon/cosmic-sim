@@ -2,7 +2,6 @@
 Тесты для модуля presets
 """
 import pytest
-import numpy as np
 from cosmic_sim import SystemPresets
 
 
