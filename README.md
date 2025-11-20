@@ -1,6 +1,6 @@
 # Cosmic Sim 🌌
 
-[![Python Version](https://img.shields.io/badge/python-3.7+-blue.svg)](https://www.python.org/downloads/)
+[![Python Version](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 Библиотека для полномасштабной симуляции космических явлений и орбитальной механики на Python.
@@ -21,7 +21,7 @@
 
 ```bash
 # Клонируйте репозиторий
-git clone https://github.com/xtimon/cosmic-sim.git
+git clone [repo-url]
 cd cosmic-sim
 
 # Установите пакет
@@ -301,7 +301,7 @@ print(f"Импульс: {momentum} кг·м/с")
 
 ## ⚙️ Требования
 
-- **Python** >= 3.7
+- **Python** >= 3.9
 - **numpy** >= 1.19.0
 - **scipy** >= 1.5.0
 - **matplotlib** >= 3.3.0
@@ -327,14 +327,32 @@ pip install -e ".[dev]"
 ### Запуск тестов
 
 ```bash
-pytest
+# Все тесты
+pytest tests/ -v
+
+# С покрытием кода
+pytest tests/ -v --cov=cosmic_sim --cov-report=html
+
+# Конкретный тест
+pytest tests/test_core.py -v
 ```
 
 ### Форматирование кода
 
 ```bash
 black cosmic_sim/
+flake8 cosmic_sim/
 ```
+
+### CI/CD
+
+Проект использует GitHub Actions для автоматизации:
+- ✅ **CI** - автоматическое тестирование на каждом push/PR
+- ✅ **CodeQL** - анализ безопасности кода
+- ✅ **Publish** - автоматическая публикация в PyPI при release
+- ✅ **Dependabot** - автоматическое обновление зависимостей
+
+Статус workflows: [![CI][ci-badge]][ci-actions]
 
 ## 📝 Лицензия
 
@@ -354,7 +372,7 @@ MIT License - см. файл [LICENSE](LICENSE)
 
 - **Автор**: Timur Isanov
 - **Email**: tisanov@yahoo.com
-- **GitHub**: [@xtimon](https://github.com/xtimon)
+- **GitHub**: [@xtimon][author-github]
 
 ## 🙏 Благодарности
 
@@ -365,3 +383,9 @@ MIT License - см. файл [LICENSE](LICENSE)
 ---
 
 ⭐ Если проект полезен, поставьте звезду!
+
+<!-- Link references -->
+[repo-url]: https://github.com/xtimon/cosmic-sim.git
+[ci-badge]: https://github.com/xtimon/cosmic-sim/workflows/CI/badge.svg
+[ci-actions]: https://github.com/xtimon/cosmic-sim/actions
+[author-github]: https://github.com/xtimon
