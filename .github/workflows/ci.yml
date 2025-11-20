@@ -155,7 +155,7 @@ jobs:
         python -c "from cosmic_sim import CosmicSim; print('Package installs correctly')"
 
     - name: Upload artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: dist
         path: dist/
