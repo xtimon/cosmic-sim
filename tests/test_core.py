@@ -1,7 +1,6 @@
 """
 Базовые тесты для модуля core
 """
-import pytest
 import numpy as np
 from cosmic_sim import CosmicSim
 
