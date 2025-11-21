@@ -2,8 +2,12 @@
 
 [![Python Version](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![PyPI version](https://badge.fury.io/py/cosmic-sim.svg)](https://badge.fury.io/py/cosmic-sim)
+[![PyPI downloads](https://img.shields.io/pypi/dm/cosmic-sim)](https://pypi.org/project/cosmic-sim/)
 
 Библиотека для полномасштабной симуляции космических явлений и орбитальной механики на Python.
+
+**📦 Доступна в PyPI:** `pip install cosmic-sim`
 
 ## ✨ Основные возможности
 
@@ -17,11 +21,17 @@
 
 ## 📦 Установка
 
+### Установка из PyPI (рекомендуется)
+
+```bash
+pip install cosmic-sim
+```
+
 ### Установка из исходников
 
 ```bash
 # Клонируйте репозиторий
-git clone [repo-url]
+git clone https://github.com/xtimon/cosmic-sim.git
 cd cosmic-sim
 
 # Установите пакет
