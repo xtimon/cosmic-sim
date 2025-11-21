@@ -75,6 +75,17 @@ def simulate_solar_system():
     plt.savefig('energy_conservation.png', dpi=150, bbox_inches='tight')
     print("✓ Сохранено: energy_conservation.png")
     
+    # Анимация с синхронизацией скорости
+    # follow_central_body=False чтобы видеть движение всей солнечной системы
+    print("\nСоздание анимации с синхронизацией...")
+    anim = visualizer.animate_simulation(bodies, 
+                                        scale_factor=1.2, 
+                                        padding_factor=0.3,
+                                        rotate_camera=False,
+                                        sync_with_slowest=True,
+                                        simulation_time_span=one_year,
+                                        follow_central_body=False)
+    print("✓ Анимация создана! Закройте окно для продолжения.")
     plt.show()
     
     return simulator, bodies
@@ -215,9 +226,11 @@ def create_animation_example():
     # Фиксированная система координат (без вращения камеры)
     # Используется blit=True и ограничение точек траектории для ускорения
     # Увеличенный интервал для ускорения анимации за год
+    # show_center_of_mass=True для визуализации центра масс (объясняет неровную траекторию Земли)
     anim = visualizer.animate_simulation(bodies, interval=100, 
                                         scale_factor=1.2, padding_factor=0.3,
-                                        rotate_camera=False, camera_rotation_speed=0.3)
+                                        rotate_camera=False, camera_rotation_speed=0.3,
+                                        show_center_of_mass=True)
     
     print("✓ Анимация создана! Закройте окно для продолжения.")
     plt.show()

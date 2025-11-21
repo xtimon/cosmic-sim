@@ -42,14 +42,34 @@ class AdvancedVisualizer:
         Poly3DCollection
             Объект сферы для отображения
         """
-        # Размер сферы масштабируется относительно расстояния до Луны
-        # Оптимальный размер для видимости без перекрытия
-        # Размер пропорционален размеру точки
+        # Размер сферы масштабируется относительно расстояния между телами
+        # Для больших систем (солнечная система) используем меньший множитель
+        # Для малых систем (земля-луна) используем больший множитель
         max_size = 1000  # Максимальный размер точки
         # Нормализуем размер точки
         normalized_size = min(size / max_size, 1.0)  # Ограничиваем до 1.0
-        # Используем 3 расстояния до Луны как оптимальный размер
-        sphere_radius = normalized_size * 3.0 * moon_distance
+        
+        # Определить масштаб системы с тремя категориями для оптимальной видимости
+        # Для Солнца используем больший множитель для лучшей видимости
+        is_sun = 'yellow' in color.lower() or size > 200  # Приблизительное определение Солнца
+        
+        if moon_distance > 5e11:  # Больше 5 а.е. - это солнечная система
+            # Для солнечной системы: размер сферы = очень малая доля от расстояния
+            max_sphere_radius = moon_distance * 0.001  # 0.1% от расстояния между телами
+            sphere_radius = normalized_size * max_sphere_radius
+            # Увеличить для Солнца
+            if is_sun:
+                sphere_radius = normalized_size * moon_distance * 0.005  # 0.5% для Солнца
+        elif moon_distance > 1e10:  # От 0.1 до 5 а.е. - двойные звезды и средние системы
+            # Для средних систем (двойные звезды): используем средний множитель
+            max_sphere_radius = moon_distance * 0.01  # 1% от расстояния между телами
+            sphere_radius = normalized_size * max_sphere_radius
+            # Увеличить для звезд
+            if is_sun:
+                sphere_radius = normalized_size * moon_distance * 0.02  # 2% для звезд
+        else:
+            # Для малых систем (земля-луна): используем больший множитель
+            sphere_radius = normalized_size * 0.1 * moon_distance
         
         # Параметрические уравнения сферы
         u = np.linspace(0, 2 * np.pi, resolution)
@@ -135,14 +155,18 @@ class AdvancedVisualizer:
                     if dist < 1e12:  # Разумный предел
                         max_dist = max(max_dist, dist)
         
-        # Использовать максимальное расстояние с ОЧЕНЬ большим множителем
+        # Использовать максимальное расстояние с оптимальным множителем
+        # Используем те же параметры, что и в анимации для консистентности
+        scale_factor = 1.2  # Тот же масштаб, что в анимации
+        padding_factor = 0.3  # Тот же отступ, что в анимации
+        
         if max_dist > 0:
-            max_range = max_dist * 25.0
+            max_range = max_dist * scale_factor
         else:
             max_range = 5e8  # Fallback
         
-        # Увеличить отступ для лучшей видимости (теперь 1.5 = 150%)
-        padding = max_range * 1.5
+        # Отступ для видимости
+        padding = max_range * padding_factor
         
         # Установить границы относительно центра масс
         ax.set_xlim([center[0] - max_range - padding, center[0] + max_range + padding])
@@ -158,15 +182,26 @@ class AdvancedVisualizer:
                            color=body.color, alpha=0.6, linewidth=1.5,
                            label=f'{body.name}')
         
-        # Показать текущие позиции (с большим размером для центральных тел)
+        # Показать текущие позиции в виде сфер (как в анимации)
         if show_bodies:
             for body in bodies:
                 pos = body.position
-                # Увеличить размер для тел с большой массой (например, Солнце)
-                size = 200 if body.mass > 1e29 else 100
-                ax.scatter(pos[0], pos[1], pos[2], 
-                          c=body.color, s=size, marker='o',
-                          edgecolors='black', linewidths=1.5, zorder=10)
+                if np.all(np.isfinite(pos)) and np.all(np.abs(pos) < 1e12):
+                    # Вычислить размер сферы пропорционально радиусу тела
+                    if body.radius > 0:
+                        if max_dist > 0:
+                            size_factor = (body.radius / max_dist) * scale_factor * 1000
+                            size = max(50, min(int(size_factor), 1000))
+                        else:
+                            size = 200 if body.mass > 1e29 else 100
+                    else:
+                        size = 200 if body.mass > 1e29 else 100
+                    
+                    # Использовать расстояние между телами для масштабирования сфер
+                    moon_distance = max_dist if max_dist > 0 else 3.844e8
+                    sphere = self._create_sphere(pos[0], pos[1], pos[2], size, body.color, 
+                                                moon_distance=moon_distance)
+                    ax.add_collection3d(sphere)
         
         ax.set_xlabel('X (м)', fontsize=10)
         ax.set_ylabel('Y (м)', fontsize=10)
@@ -225,6 +260,19 @@ class AdvancedVisualizer:
         else:
             center = np.zeros(3)
         
+        # Вычислить масштаб на основе начальных позиций (до построения графиков)
+        max_dist = 0
+        for i, b1 in enumerate(bodies):
+            for b2 in bodies[i+1:]:
+                if (np.all(np.isfinite(b1.position)) and np.all(np.isfinite(b2.position))):
+                    dist = np.linalg.norm(b1.position - b2.position)
+                    if dist < 1e12:
+                        max_dist = max(max_dist, dist)
+        
+        # Используем те же параметры, что и в анимации для консистентности
+        scale_factor = 1.2  # Тот же масштаб, что в анимации
+        padding_factor = 0.3  # Тот же отступ, что в анимации
+        
         # Сначала построить траектории (относительно центра)
         for body in bodies:
             if len(body.trajectory) > 0:
@@ -235,27 +283,27 @@ class AdvancedVisualizer:
                        label=f'{body.name}', zorder=1)
         
         # Затем показать текущие позиции (поверх траекторий)
+        # Используем круги большего размера для лучшей видимости
         for body in bodies:
-            # Увеличить размер для тел с большой массой
-            size = 300 if body.mass > 1e29 else 150
+            # Вычислить размер пропорционально радиусу тела
+            if body.radius > 0:
+                if max_dist > 0:
+                    size_factor = (body.radius / max_dist) * scale_factor * 1000
+                    size = max(100, min(int(size_factor), 2000))
+                else:
+                    size = 300 if body.mass > 1e29 else 150
+            else:
+                size = 300 if body.mass > 1e29 else 150
+            
             ax.scatter(body.position[idx1], body.position[idx2],
                       c=body.color, s=size, marker='o',
                       edgecolors='black', linewidths=2, zorder=10,
                       label=None)  # Не добавлять в легенду, чтобы избежать дублирования
         
-        # Вычислить масштаб на основе начальных позиций
-        max_dist = 0
-        for i, b1 in enumerate(bodies):
-            for b2 in bodies[i+1:]:
-                if (np.all(np.isfinite(b1.position)) and np.all(np.isfinite(b2.position))):
-                    dist = np.linalg.norm(b1.position - b2.position)
-                    if dist < 1e12:
-                        max_dist = max(max_dist, dist)
-        
-        # Установить масштаб с большим отступом
+        # Установить масштаб с оптимальным отступом
         if max_dist > 0:
-            max_range = max_dist * 25.0
-            padding = max_range * 1.5
+            max_range = max_dist * scale_factor
+            padding = max_range * padding_factor
             # Получить текущие границы
             xlim = ax.get_xlim()
             ylim = ax.get_ylim()
@@ -274,6 +322,47 @@ class AdvancedVisualizer:
         
         return fig
     
+    def _find_slowest_orbital_period(self, bodies: List[Body]) -> Tuple[Optional[Body], float]:
+        """
+        Найти планету с самым большим орбитальным периодом (самую медленную)
+        
+        Parameters:
+        -----------
+        bodies : List[Body]
+            Список тел в системе
+            
+        Returns:
+        --------
+        Tuple[Optional[Body], float]
+            (самая медленная планета, её орбитальный период в секундах)
+        """
+        if len(bodies) < 2:
+            return None, 0.0
+        
+        # Найти центральное тело (обычно самое массивное)
+        central_body = max(bodies, key=lambda b: b.mass)
+        central_mass = central_body.mass
+        
+        slowest_body = None
+        max_period = 0.0
+        
+        for body in bodies:
+            if body == central_body:
+                continue
+            
+            # Вычислить расстояние от центрального тела
+            distance = np.linalg.norm(body.position - central_body.position)
+            
+            if distance > 0:
+                # Вычислить орбитальный период по третьему закону Кеплера
+                period = self.cosmic.kepler_third_law(distance, central_mass, body.mass)
+                
+                if period > max_period:
+                    max_period = period
+                    slowest_body = body
+        
+        return slowest_body, max_period
+    
     def animate_simulation(self, bodies: List[Body], 
                           interval: int = 50,
                           figsize: Tuple[int, int] = (12, 10),
@@ -282,13 +371,30 @@ class AdvancedVisualizer:
                           scale_factor: float = 25.0,
                           padding_factor: float = 1.5,
                           rotate_camera: bool = True,
-                          camera_rotation_speed: float = 0.5) -> FuncAnimation:
+                          camera_rotation_speed: float = 0.5,
+                          sync_with_slowest: bool = False,
+                          simulation_time_span: Optional[float] = None,
+                          follow_central_body: bool = True,
+                          show_center_of_mass: bool = False) -> FuncAnimation:
         """
         Создать анимацию симуляции
         
         Parameters:
         -----------
         bodies : List[Body]
+            Список тел с траекториями
+        interval : int
+            Интервал между кадрами в миллисекундах
+        sync_with_slowest : bool
+            Синхронизировать скорость анимации с планетой с самым большим орбитальным периодом
+        simulation_time_span : Optional[float]
+            Общая длительность симуляции в секундах (нужно для синхронизации)
+        follow_central_body : bool
+            Следовать ли камерой за центральным телом (Солнце/Земля). 
+            Если False, камера остается неподвижной, показывая движение всей системы
+        show_center_of_mass : bool
+            Показывать ли центр масс системы и его траекторию.
+            Полезно для понимания движения системы Земля-Луна
             Список тел с траекториями
         interval : int
             Интервал между кадрами (мс)
@@ -319,13 +425,44 @@ class AdvancedVisualizer:
         if max_traj_len == 0:
             raise ValueError("Нет траекторий для анимации")
         
-        # Вычислить временные метки для каждого кадра (если есть информация о времени)
-        # Предполагаем, что время равномерно распределено между кадрами
-        time_per_frame = 1.0  # По умолчанию 1 секунда на кадр
-        if hasattr(bodies[0], 'trajectory') and len(bodies[0].trajectory) > 1:
-            # Если есть информация о времени симуляции, можно использовать её
-            # Пока используем просто номер кадра
-            pass
+        # Синхронизация скорости анимации с самой медленной планетой
+        if sync_with_slowest and simulation_time_span is not None:
+            slowest_body, slowest_period = self._find_slowest_orbital_period(bodies)
+            if slowest_body and slowest_period > 0:
+                # Вычислить время симуляции на один кадр
+                time_per_frame = simulation_time_span / max_traj_len
+                
+                # Желаемое время анимации для одного оборота самой медленной планеты (в секундах)
+                # Например, 20 секунд анимации для одного оборота
+                desired_animation_time_per_orbit = 20.0  # секунд
+                
+                # Вычислить, сколько кадров нужно для одного оборота
+                frames_per_orbit = slowest_period / time_per_frame
+                
+                # Вычислить интервал между кадрами для синхронизации
+                # interval в миллисекундах
+                interval = int((desired_animation_time_per_orbit * 1000) / frames_per_orbit)
+                
+                # Ограничить интервал разумными значениями (10-500 мс)
+                interval = max(10, min(500, interval))
+                
+                print(f"\nСинхронизация анимации:")
+                print(f"  Самая медленная планета: {slowest_body.name}")
+                print(f"  Орбитальный период: {slowest_period/(365.25*24*3600):.2f} лет")
+                print(f"  Время на кадр симуляции: {time_per_frame:.2e} с")
+                print(f"  Кадров на один оборот: {frames_per_orbit:.1f}")
+                print(f"  Интервал между кадрами: {interval} мс")
+                print(f"  Время анимации для одного оборота: {desired_animation_time_per_orbit:.1f} с")
+            else:
+                print("Не удалось найти планету для синхронизации, используется стандартный interval")
+        else:
+            # Вычислить временные метки для каждого кадра (если есть информация о времени)
+            # Предполагаем, что время равномерно распределено между кадрами
+            time_per_frame = 1.0  # По умолчанию 1 секунда на кадр
+            if hasattr(bodies[0], 'trajectory') and len(bodies[0].trajectory) > 1:
+                # Если есть информация о времени симуляции, можно использовать её
+                # Пока используем просто номер кадра
+                pass
         
         # Сохранить начальные позиции из траекторий для масштабирования
         # Используем первую точку траектории, если она есть, иначе текущую позицию
@@ -422,20 +559,32 @@ class AdvancedVisualizer:
         # Сохранить центр для использования в анимации
         animation_center = center
         
-        # Найти Землю для центрирования камеры на ней
-        earth_body = None
+        # Найти центральное тело для центрирования камеры (Солнце для солнечной системы, Земля для земля-луна)
+        central_body = None
+        # Сначала ищем Солнце
         for body in bodies:
-            if 'земля' in body.name.lower() or 'earth' in body.name.lower():
-                earth_body = body
+            if 'солнце' in body.name.lower() or 'sun' in body.name.lower():
+                central_body = body
                 break
-        # Если не нашли по имени, используем первое тело (обычно это Земля)
-        if earth_body is None and len(bodies) > 0:
-            earth_body = bodies[0]
+        # Если не нашли Солнце, ищем Землю
+        if central_body is None:
+            for body in bodies:
+                if 'земля' in body.name.lower() or 'earth' in body.name.lower():
+                    central_body = body
+                    break
+        # Если не нашли, используем самое массивное тело (обычно центральное)
+        if central_body is None and len(bodies) > 0:
+            central_body = max(bodies, key=lambda b: b.mass)
         
         # Инициализировать линии и точки
         lines = []
         points = []  # Используем постоянные точки вместо создания новых
         body_info = []
+        
+        # Для визуализации центра масс
+        com_trajectory = []  # Траектория центра масс
+        com_line = None
+        com_point = None
         
         for body in bodies:
             if len(body.trajectory) > 0:
@@ -447,20 +596,34 @@ class AdvancedVisualizer:
                 
                 # Создать постоянную точку для тела (будем обновлять её позицию)
                 # Размер точек будет масштабироваться пропорционально расстояниям в системе
+                # Для Солнца делаем сферу больше для лучшей видимости
+                is_sun = 'солнце' in body.name.lower() or 'sun' in body.name.lower()
+                
                 if body.radius > 0:
                     if max_dist_between_bodies > 0:
                         size_factor = (body.radius / max_dist_between_bodies) * scale_factor * 1000
                         size = max(50, min(int(size_factor), 1000))
+                        # Увеличить размер для Солнца
+                        if is_sun:
+                            size = max(200, int(size * 3))  # В 3 раза больше минимум
                     else:
                         min_radius = min(b.radius for b in bodies if b.radius > 0)
                         if min_radius > 0:
                             base_size = 150
                             size = int(base_size * (body.radius / min_radius) ** 0.6)
                             size = min(size, 500)
+                            # Увеличить размер для Солнца
+                            if is_sun:
+                                size = max(300, int(size * 2))
                         else:
                             size = 150
+                            if is_sun:
+                                size = 300
                 else:
                     size = 300 if body.mass > 1e29 else 150
+                    # Увеличить размер для Солнца
+                    if is_sun:
+                        size = 500
                 
                 # Создать начальную сферу (будем обновлять её позицию)
                 # Используем расстояние до Луны для масштабирования
@@ -469,6 +632,13 @@ class AdvancedVisualizer:
                 ax.add_collection3d(sphere)
                 points.append((sphere, body))
                 body_info.append((body, body.color, size, moon_distance))
+        
+        # Инициализировать визуализацию центра масс, если нужно
+        if show_center_of_mass:
+            com_line, = ax.plot([], [], [], color='red', alpha=0.4,
+                               linewidth=2, linestyle='--', label='Центр масс')
+            com_point, = ax.plot([], [], [], color='red', marker='x',
+                                markersize=10, markeredgewidth=2, label='Центр масс (текущий)')
         
         ax.set_xlabel('X (м)', fontsize=10)
         ax.set_ylabel('Y (м)', fontsize=10)
@@ -483,20 +653,47 @@ class AdvancedVisualizer:
         ax.view_init(elev=initial_elev, azim=initial_azim)
         
         def animate(frame):
+            nonlocal com_trajectory  # Использовать внешнюю переменную
             frame_start_time = time.time()
             artists = []
             
-            # Обновить центр камеры на позицию Земли
-            if earth_body and frame < len(earth_body.trajectory):
-                earth_pos = earth_body.trajectory[frame]
-                if (np.all(np.isfinite(earth_pos)) and np.all(np.abs(earth_pos) < 1e12)):
-                    # Обновить границы графика так, чтобы Земля была в центре
-                    x_min = earth_pos[0] - max_range - padding
-                    x_max = earth_pos[0] + max_range + padding
-                    y_min = earth_pos[1] - max_range - padding
-                    y_max = earth_pos[1] + max_range + padding
-                    z_min = earth_pos[2] - max_range - padding
-                    z_max = earth_pos[2] + max_range + padding
+            # Вычислить центр масс для текущего кадра
+            if show_center_of_mass:
+                total_mass = sum(body.mass for body in bodies)
+                com = np.zeros(3)
+                if total_mass > 0:
+                    for body in bodies:
+                        if frame < len(body.trajectory):
+                            pos = body.trajectory[frame]
+                            if np.all(np.isfinite(pos)) and np.all(np.abs(pos) < 1e12):
+                                com += body.mass * pos
+                    com /= total_mass
+                    com_trajectory.append(com.copy())
+                    
+                    # Обновить траекторию центра масс
+                    if len(com_trajectory) > 1:
+                        com_array = np.array(com_trajectory)
+                        com_line.set_data(com_array[:, 0], com_array[:, 1])
+                        com_line.set_3d_properties(com_array[:, 2])
+                        artists.append(com_line)
+                    
+                    # Обновить текущую позицию центра масс
+                    com_point.set_data([com[0]], [com[1]])
+                    com_point.set_3d_properties([com[2]])
+                    artists.append(com_point)
+            
+            # Обновить центр камеры на позицию центрального тела (Солнце или Земля)
+            # Только если включено следование за центральным телом
+            if follow_central_body and central_body and frame < len(central_body.trajectory):
+                central_pos = central_body.trajectory[frame]
+                if (np.all(np.isfinite(central_pos)) and np.all(np.abs(central_pos) < 1e12)):
+                    # Обновить границы графика так, чтобы центральное тело было в центре
+                    x_min = central_pos[0] - max_range - padding
+                    x_max = central_pos[0] + max_range + padding
+                    y_min = central_pos[1] - max_range - padding
+                    y_max = central_pos[1] + max_range + padding
+                    z_min = central_pos[2] - max_range - padding
+                    z_max = central_pos[2] + max_range + padding
                     
                     ax.set_xlim([x_min, x_max])
                     ax.set_ylim([y_min, y_max])
@@ -514,7 +711,9 @@ class AdvancedVisualizer:
                 if frame < len(body.trajectory):
                     # Ограничиваем количество точек для отрисовки (последние N точек)
                     # Это ускоряет рендеринг при большом количестве точек
-                    max_traj_points = min(frame + 1, 300)  # Максимум 300 точек для отрисовки (уменьшено)
+                    # Увеличить количество точек траектории для лучшей видимости следа
+                    # Для солнечной системы показываем больше точек
+                    max_traj_points = min(frame + 1, 2000)  # Максимум 2000 точек для отрисовки (увеличено)
                     start_idx = max(0, frame + 1 - max_traj_points)
                     
                     traj = np.array(body.trajectory[start_idx:frame+1])
